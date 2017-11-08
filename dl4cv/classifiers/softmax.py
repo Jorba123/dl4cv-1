@@ -133,9 +133,115 @@ def softmax_loss_vectorized(W, X, y, reg):
     # regularization!                                                           #
     #############################################################################
 
+    num_classes = W.shape[1]
+    num_samples = X.shape[0]
+    D = X.shape[1]
+
+    # transform y to one-hot
+    y_one_hot = np.zeros((num_samples, num_classes))
+    y_one_hot[np.arange(num_samples), y] = 1
+    # forward pass
+    prediction = X.dot(W)
+
+    # calculate softmax for prediction
+    # take care of potential numerical issues
+    prediction -= np.max(prediction, axis=1, keepdims=True)
+    y_hat = np.exp(prediction) / np.sum(np.exp(prediction), axis=1, keepdims=True)
+
+    # compute cross entropy loss using the one hot array to create some kind of mask
+    # true label predictions
+    # after that y_hat is an array with the same shape but it now only contains predictions for the
+    # real class label and is otherwise 0
+    y_hat_m = np.multiply(y_hat, y_one_hot)
+    losses = - np.log(np.multiply(y_one_hot, y_hat_m), where=y_one_hot.astype(bool))
+    #losses = - np.log(y_hat[range(num_samples), y])
+    true_predictions = y_hat[range(num_samples), y]
+    dW = X.T.dot(y_hat - y_one_hot)
+    dW /= num_samples
+
+    loss = np.sum(losses) / num_samples
+
+    # add L2 regularization
+    # sum (w_i^2)
+    loss += reg * np.sum(W ** 2)
+    dW += reg * W
+
     #############################################################################
     #                          END OF YOUR CODE                                 #
     #############################################################################
 
     return loss, dW
 
+
+from dl4cv.data_utils import load_CIFAR10
+
+# Load the raw CIFAR-10 data
+cifar10_dir = 'C:\\Users\\felix\\OneDrive\\Studium\\Studium\\4. Semester\\DL4CV\Exercises\\01\\dl4cv\\exercise_1\\datasets'
+X, y = load_CIFAR10(cifar10_dir)
+
+# Split the data into train, val, and test sets. In addition we will
+# create a small development set as a subset of the data set;
+# we can use this for development so our code runs faster.
+num_training = 48000
+num_validation = 1000
+num_test = 1000
+num_dev = 500
+
+assert (num_training + num_validation + num_test) == 50000, 'You have not provided a valid data split.'
+
+# Our training set will be the first num_train points from the original
+# training set.
+mask = range(num_training)
+X_train = X[mask]
+y_train = y[mask]
+
+# Our validation set will be num_validation points from the original
+# training set.
+mask = range(num_training, num_training + num_validation)
+X_val = X[mask]
+y_val = y[mask]
+
+# We use a small subset of the training set as our test set.
+mask = range(num_training + num_validation, num_training + num_validation + num_test)
+X_test = X[mask]
+y_test = y[mask]
+
+# We will also make a development set, which is a small subset of
+# the training set. This way the development cycle is faster.
+mask = np.random.choice(num_training, num_dev, replace=False)
+X_dev = X_train[mask]
+y_dev = y_train[mask]
+
+X_train = np.reshape(X_train, (X_train.shape[0], -1))
+X_val = np.reshape(X_val, (X_val.shape[0], -1))
+X_test = np.reshape(X_test, (X_test.shape[0], -1))
+X_dev = np.reshape(X_dev, (X_dev.shape[0], -1))
+
+# As a sanity check, print out the shapes of the data
+print('Training data shape: ', X_train.shape)
+print('Validation data shape: ', X_val.shape)
+print('Test data shape: ', X_test.shape)
+print('dev data shape: ', X_dev.shape)
+
+mean_image = np.mean(X_train, axis=0)
+print(mean_image[:10]) # print a few of the elements
+
+X_train -= mean_image
+X_val -= mean_image
+X_test -= mean_image
+X_dev -= mean_image
+
+X_train = np.hstack([X_train, np.ones((X_train.shape[0], 1))])
+X_val = np.hstack([X_val, np.ones((X_val.shape[0], 1))])
+X_test = np.hstack([X_test, np.ones((X_test.shape[0], 1))])
+X_dev = np.hstack([X_dev, np.ones((X_dev.shape[0], 1))])
+
+print(X_train.shape, X_val.shape, X_test.shape, X_dev.shape)
+
+# Generate a random softmax weight matrix and use it to compute the loss.
+W = np.random.randn(3073, 10) * 0.0001
+loss, grad = softmax_loss_vectorized(W, X_dev, y_dev, 0.0)
+
+# As a rough sanity check, our loss should be something close to -log(0.1).
+print('loss: %f' % loss)
+print('sanity check: %f' % (-np.log(0.1)))
