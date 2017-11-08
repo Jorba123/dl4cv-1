@@ -34,7 +34,6 @@ def softmax_loss_naive(W, X, y, reg):
     num_samples = X.shape[0]
     D = X.shape[1]
     # compute scores based on W and X ("forward" pass)
-    f = np.zeros(num_classes)
     losses = np.zeros(num_samples)
     # softmax predictions
     #y_hat = np.zeros((num_samples, num_classes))
@@ -57,9 +56,8 @@ def softmax_loss_naive(W, X, y, reg):
             class_weight_vector = W[:, i]
             # iterate over pixels
             for j in range(D):
-                prediction[i] = sample[j] * class_weight_vector[j]
+                prediction[i] += sample[j] * class_weight_vector[j]
 
-            f[i] += prediction[i]
 
         # calculate softmax to get y_hat (predicted class labels)
         y_hat = calculate_softmax(prediction)
@@ -88,7 +86,7 @@ def softmax_loss_naive(W, X, y, reg):
 
             # iterate over pixel data
             for j in range(D):
-                dW[j][i] += sample[j] * (prediction[i] - delta_yi)
+                dW[j][i] += (sample[j] * (prediction[i] - delta_yi))
 
     # calculate mean cross entropy loss and mean gradients
     sum_of_losses = 0
@@ -97,7 +95,10 @@ def softmax_loss_naive(W, X, y, reg):
     loss = sum_of_losses / num_samples
     dW /= num_samples
 
-
+    # add L2 regularization
+    # sum (w_i^2)
+    loss += reg * np.sum(W ** 2)
+    dW += reg * W
 
     #############################################################################
     #                          END OF YOUR CODE                                 #
