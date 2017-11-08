@@ -152,11 +152,12 @@ def softmax_loss_vectorized(W, X, y, reg):
     # true label predictions
     # after that y_hat is an array with the same shape but it now only contains predictions for the
     # real class label and is otherwise 0
-    y_hat_m = np.multiply(y_hat, y_one_hot)
-    losses = - np.log(np.multiply(y_one_hot, y_hat_m), where=y_one_hot.astype(bool))
-    #losses = - np.log(y_hat[range(num_samples), y])
-    true_predictions = y_hat[range(num_samples), y]
-    dW = X.T.dot(y_hat - y_one_hot)
+    #y_hat_m = np.multiply(y_hat, y_one_hot)
+    #losses = - np.log(np.multiply(y_one_hot, y_hat_m), where=y_one_hot.astype(bool))
+    losses = - np.log(y_hat[range(num_samples), y])
+    #true_predictions = y_hat[range(num_samples), y]
+    #dW = X.T.dot(y_hat - y_one_hot)
+    dW = np.dot(X.T, (y_hat - y_one_hot))
     dW /= num_samples
 
     loss = np.sum(losses) / num_samples
