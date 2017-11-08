@@ -70,11 +70,34 @@ def softmax_loss_naive(W, X, y, reg):
         y_loss = np.log(y_hat[y_sample]) * (-1)
         losses[sample_index] = y_loss
 
-    # calculate mean cross entropy loss
+
+        # Calculate gradients. Get the Jacobian of the cross entropy loss function w.r.t to the weights factoring in
+        # the chain rule.
+        # the calculation of the gradients of xent, softmax and weight multiplication can be simplified to
+        # D_ij xent (W) = x_j * (S_i - delta_yi)
+        # S_i -> Softmax result at i
+        # delta_yi Kronecker delta. y = Correct label
+        # x_j Input value at j
+        # For this we have to iterate again over each pixel value and each class
+
+        for i in range(num_classes):
+            # delta_yi: 0 if not correct label, 1 if correct label
+            delta_yi = 0
+            if i == y_sample:
+                delta_yi = 1
+
+            # iterate over pixel data
+            for j in range(D):
+                dW[j][i] += sample[j] * (prediction[i] - delta_yi)
+
+    # calculate mean cross entropy loss and mean gradients
     sum_of_losses = 0
     for l_j in losses:
         sum_of_losses += l_j
     loss = sum_of_losses / num_samples
+    dW /= num_samples
+
+
 
     #############################################################################
     #                          END OF YOUR CODE                                 #
