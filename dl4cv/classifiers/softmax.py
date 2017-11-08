@@ -1,6 +1,7 @@
 import numpy as np
 from random import shuffle
 
+
 def softmax_loss_naive(W, X, y, reg):
     """
     Softmax loss function, naive implementation (with loops)
@@ -33,18 +34,7 @@ def softmax_loss_naive(W, X, y, reg):
     num_classes = W.shape[1]
     num_samples = X.shape[0]
     D = X.shape[1]
-    # compute scores based on W and X ("forward" pass)
     losses = np.zeros(num_samples)
-    # softmax predictions
-    #y_hat = np.zeros((num_samples, num_classes))
-
-    # transform y to the same format (one-hot). Strictly speaking this contains np loops but since it just makes the
-    # calculation easier this should be fine
-    #y_oh = np.zeros((num_samples, num_classes))
-    #y_oh[np.arange(num_samples), y] = 1
-    #print('One Hot y: ', y_oh[0])
-    #print('y: ', y[0])
-    print('Num Classes ' + str(num_classes))
 
     # do the calculation for each sample in the batch
     for sample_index in range(num_samples):
@@ -58,7 +48,6 @@ def softmax_loss_naive(W, X, y, reg):
             for j in range(D):
                 prediction[i] += sample[j] * class_weight_vector[j]
 
-
         # calculate softmax to get y_hat (predicted class labels)
         y_hat = calculate_softmax(prediction)
         assert sum(y_hat) - 1.0 < 0.001, 'Sum is not 1.0 {0}'.format(sum(y_hat))
@@ -67,7 +56,6 @@ def softmax_loss_naive(W, X, y, reg):
         y_sample = y[sample_index]
         y_loss = np.log(y_hat[y_sample]) * (-1)
         losses[sample_index] = y_loss
-
 
         # Calculate gradients. Get the Jacobian of the cross entropy loss function w.r.t to the weights factoring in
         # the chain rule.
