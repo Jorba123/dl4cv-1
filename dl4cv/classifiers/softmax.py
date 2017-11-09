@@ -153,13 +153,8 @@ def softmax_loss_vectorized(W, X, y, reg):
     # transform y to one-hot
     y_one_hot = np.zeros((num_samples, num_classes))
     y_one_hot[np.arange(num_samples), y] = 1
-    # forward pass
-    prediction = X.dot(W)
 
-    # calculate softmax for prediction
-    # take care of potential numerical issues
-    prediction -= np.max(prediction, axis=1, keepdims=True)
-    y_hat = np.exp(prediction) / np.sum(np.exp(prediction), axis=1, keepdims=True)
+    y_hat = perform_forward_pass_vecotrized(X, W)
 
     # compute cross entropy loss using the one hot array to create some kind of mask
     # true label predictions
@@ -185,6 +180,16 @@ def softmax_loss_vectorized(W, X, y, reg):
     #############################################################################
 
     return loss, dW
+
+
+def perform_forward_pass_vecotrized(X, W):
+    # forward pass (matrix multiplication)
+    prediction = X.dot(W)
+
+    # calculate softmax for prediction
+    # take care of potential numerical issues
+    prediction -= np.max(prediction, axis=1, keepdims=True)
+    return np.exp(prediction) / np.sum(np.exp(prediction), axis=1, keepdims=True)
 
 # from dl4cv.data_utils import load_CIFAR10
 #

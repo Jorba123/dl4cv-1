@@ -97,6 +97,9 @@ class LinearClassifier(object):
         # Implement this method. Store the predicted labels in y_pred.            #
         ###########################################################################
 
+        y_hat = perform_forward_pass_vecotrized(X, self.W)
+        y_pred = np.argmax(y_hat, axis=1)
+
         ###########################################################################
         #                           END OF YOUR CODE                              #
         ###########################################################################
