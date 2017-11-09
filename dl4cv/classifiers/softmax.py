@@ -74,7 +74,20 @@ def softmax_loss_naive(W, X, y, reg):
 
             # iterate over pixel data
             for j in range(D):
-                dW[j][i] += (sample[j] * (prediction[i] - delta_yi))
+                dW[j][i] += (sample[j] * (y_hat[i] - delta_yi))
+
+        # for k in range(num_classes):
+        #     # delta_yi: 0 if not correct label, 1 if correct label
+        #     delta_yi = 0
+        #     if k == y_sample:
+        #         delta_yi = 1
+        #
+        #
+        #     for d in range(D):
+        #         #if k == y[sample_index]:
+        #         dW[d, k] += X.T[d, sample_index] * (y_hat[k] - delta_yi)
+        #         #else:
+        #             #dW[d, k] += X.T[d, sample_index] * y_hat[k]
 
     # calculate mean cross entropy loss and mean gradients
     sum_of_losses = 0
@@ -172,3 +185,91 @@ def softmax_loss_vectorized(W, X, y, reg):
     #############################################################################
 
     return loss, dW
+
+# from dl4cv.data_utils import load_CIFAR10
+#
+# # Load the raw CIFAR-10 data
+# cifar10_dir = 'C:\\Users\\felix\\OneDrive\\Studium\\Studium\\4. Semester\\DL4CV\Exercises\\01\\dl4cv\\exercise_1\\datasets'
+# X, y = load_CIFAR10(cifar10_dir)
+#
+# # Split the data into train, val, and test sets. In addition we will
+# # create a small development set as a subset of the data set;
+# # we can use this for development so our code runs faster.
+# num_training = 48000
+# num_validation = 1000
+# num_test = 1000
+# num_dev = 500
+#
+# assert (num_training + num_validation + num_test) == 50000, 'You have not provided a valid data split.'
+#
+# # Our training set will be the first num_train points from the original
+# # training set.
+# mask = range(num_training)
+# X_train = X[mask]
+# y_train = y[mask]
+#
+# # Our validation set will be num_validation points from the original
+# # training set.
+# mask = range(num_training, num_training + num_validation)
+# X_val = X[mask]
+# y_val = y[mask]
+#
+# # We use a small subset of the training set as our test set.
+# mask = range(num_training + num_validation, num_training + num_validation + num_test)
+# X_test = X[mask]
+# y_test = y[mask]
+#
+# # We will also make a development set, which is a small subset of
+# # the training set. This way the development cycle is faster.
+# mask = np.random.choice(num_training, num_dev, replace=False)
+# X_dev = X_train[mask]
+# y_dev = y_train[mask]
+#
+# X_train = np.reshape(X_train, (X_train.shape[0], -1))
+# X_val = np.reshape(X_val, (X_val.shape[0], -1))
+# X_test = np.reshape(X_test, (X_test.shape[0], -1))
+# X_dev = np.reshape(X_dev, (X_dev.shape[0], -1))
+#
+# # As a sanity check, print out the shapes of the data
+# print('Training data shape: ', X_train.shape)
+# print('Validation data shape: ', X_val.shape)
+# print('Test data shape: ', X_test.shape)
+# print('dev data shape: ', X_dev.shape)
+#
+# mean_image = np.mean(X_train, axis=0)
+# print(mean_image[:10]) # print a few of the elements
+#
+# X_train -= mean_image
+# X_val -= mean_image
+# X_test -= mean_image
+# X_dev -= mean_image
+#
+# X_train = np.hstack([X_train, np.ones((X_train.shape[0], 1))])
+# X_val = np.hstack([X_val, np.ones((X_val.shape[0], 1))])
+# X_test = np.hstack([X_test, np.ones((X_test.shape[0], 1))])
+# X_dev = np.hstack([X_dev, np.ones((X_dev.shape[0], 1))])
+#
+# print(X_train.shape, X_val.shape, X_test.shape, X_dev.shape)
+#
+# # Generate a random softmax weight matrix and use it to compute the loss.
+# W = np.random.randn(3073, 10) * 0.0001
+# loss, grad = softmax_loss_naive(W, X_dev, y_dev, 0.0)
+# loss2, grad2 = softmax_loss_vectorized(W, X_dev, y_dev, 0.0)
+#
+# loss, grad = softmax_loss_naive(W, X_dev, y_dev, 0.0)
+#
+# # We use numeric gradient checking as a debugging tool.
+# # The numeric gradient should be close to the analytic gradient.
+# from dl4cv.gradient_check import grad_check_sparse
+# f = lambda w: softmax_loss_naive(w, X_dev, y_dev, 0.0)[0]
+# grad_numerical = grad_check_sparse(f, W, grad, num_checks=3)
+#
+# # Do another gradient check with regularization
+# loss, grad = softmax_loss_naive(W, X_dev, y_dev, 1e2)
+# f = lambda w: softmax_loss_naive(w, X_dev, y_dev, 1e2)[0]
+# grad_numerical = grad_check_sparse(f, W, grad, num_checks=3)
+#
+# # As a rough sanity check, our loss should be something close to -log(0.1).
+# #print('loss: %f' % loss)
+# #print('sanity check: %f' % (-np.log(0.1)))
+
