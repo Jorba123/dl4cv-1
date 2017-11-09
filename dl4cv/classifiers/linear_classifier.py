@@ -1,8 +1,8 @@
 import numpy as np
 from dl4cv.classifiers.softmax import *
 
-class LinearClassifier(object):
 
+class LinearClassifier(object):
     def __init__(self):
         self.W = None
 
@@ -25,8 +25,8 @@ class LinearClassifier(object):
         Outputs:
         A list containing the value of the loss function at each training iteration.
         """
-        num_train, dim = X.shape
-        num_classes = np.max(y) + 1 # assume y takes values 0...K-1 where K is number of classes
+        num_samples, dim = X.shape
+        num_classes = np.max(y) + 1  # assume y takes values 0...K-1 where K is number of classes
         if self.W is None:
             # lazily initialize W
             self.W = 0.001 * np.random.randn(dim, num_classes)
@@ -49,6 +49,10 @@ class LinearClassifier(object):
             # replacement is faster than sampling without replacement.              #
             #########################################################################
 
+            batch_indices = np.random.choice(num_samples, batch_size)
+            X_batch = X[batch_indices]
+            y_batch = y[batch_indices]
+
             #########################################################################
             #                       END OF YOUR CODE                                #
             #########################################################################
@@ -62,6 +66,8 @@ class LinearClassifier(object):
             # TODO:                                                                 #
             # Update the weights using the gradient and the learning rate.          #
             #########################################################################
+
+            self.W -= learning_rate * grad
 
             #########################################################################
             #                       END OF YOUR CODE                                #
@@ -119,4 +125,3 @@ class Softmax(LinearClassifier):
 
     def loss(self, X_batch, y_batch, reg):
         return softmax_loss_vectorized(self.W, X_batch, y_batch, reg)
-
