@@ -1,4 +1,16 @@
 import numpy as np
+import time
+
+
+def print_step_summary_and_update_best_values(epoch, train_loss,
+                                              train_accuracy, test_loss, test_accuracy, duration):
+    # print table header again after every 3000th step
+    if epoch % 100 == 0 and epoch > 0:
+        print('Epoch\tTrain Loss\tTrain accuracy\t\tTest Loss\tTest accuracy\tDuration')
+    train_string = '{0:.5f}\t\t{1:.2f}%\t\t\t'.format(train_loss, train_accuracy * 100)
+    test_string = '{0:.5f}\t\t{1:.2f}%\t\t'.format(test_loss, test_accuracy * 100)
+
+    print('{0}\t'.format(epoch) + train_string + test_string + '{0:.3f}'.format(duration))
 
 
 class TwoLayerNet(object):
@@ -38,7 +50,7 @@ class TwoLayerNet(object):
         self.params['W2'] = std * np.random.randn(hidden_size, output_size)
         self.params['b2'] = np.zeros(output_size)
 
-    def loss(self, X, y=None, reg=0.0):
+    def loss(self, X, y=None, reg=0.0, dropout=(0.0, False)):
         """
         Compute the loss and gradients for a two layer fully connected neural
         network.
@@ -62,6 +74,7 @@ class TwoLayerNet(object):
           with respect to the loss function; has the same keys as self.params.
         """
         # Unpack variables from the params dictionary
+        dropout_percent, do_dropout = dropout
         W1, b1 = self.params['W1'], self.params['b1']
         W2, b2 = self.params['W2'], self.params['b2']
         N, D = X.shape
@@ -79,10 +92,12 @@ class TwoLayerNet(object):
         l1_input = np.dot(X, W1) + b1
         l1_activation = l1_input * (l1_input > 0)
 
+        if do_dropout:
+            dropout_layer = np.random.binomial([np.ones((N, W1.shape[1]))], 1 - dropout_percent)[0] * (1.0 / (1 - dropout_percent))
+            l1_activation *= dropout_layer
+
         # compute activations for layer 2 using softmax
         scores = np.dot(l1_activation, W2) + b2
-
-
 
         #############################################################################
         #                              END OF YOUR CODE                             #
@@ -170,7 +185,10 @@ class TwoLayerNet(object):
     def train(self, X, y, X_val, y_val,
               learning_rate=1e-3, learning_rate_decay=0.95,
               reg=1e-5, num_iters=100,
-              batch_size=200, verbose=False):
+              batch_size=200,
+              dropout=(0.5, False),
+              random_flip=None,
+              verbose=False):
         """
         Train this neural network using stochastic gradient descent.
 
@@ -195,7 +213,17 @@ class TwoLayerNet(object):
         loss_history = []
         train_acc_history = []
         val_acc_history = []
+        val_loss_history = []
 
+        # this is only theoretical since we sample with replacing
+        best_validation_accuracy = -1
+        best_model = {}
+        early_stopping_counter = 10
+
+        print('Epoch\tTrain Loss\tTrain accuracy\t\tTest Loss\tTest accuracy\tDuration')
+        print('=====================================================================================================')
+        start_time = time.time()
+        average_train_loss = 0
         for it in range(num_iters):
             X_batch = None
             y_batch = None
@@ -209,13 +237,21 @@ class TwoLayerNet(object):
             X_batch = X[batch_indices]
             y_batch = y[batch_indices]
 
+            if random_flip is not None:
+                # how many images should we flip?
+                num_images_to_flip = max(1, round(batch_size * random_flip))
+                images_to_flip_indices = np.random.choice(batch_size, num_images_to_flip, replace=False)
+
+                X_batch[images_to_flip_indices] = np.fliplr(X_batch[images_to_flip_indices])
+
             #########################################################################
             #                             END OF YOUR CODE                          #
             #########################################################################
 
             # Compute loss and gradients using the current minibatch
-            loss, grads = self.loss(X_batch, y=y_batch, reg=reg)
+            loss, grads = self.loss(X_batch, y=y_batch, reg=reg, dropout=dropout)
             loss_history.append(loss)
+            average_train_loss += loss
 
             #########################################################################
             # TODO: Use the gradients in the grads dictionary to update the         #
@@ -238,19 +274,62 @@ class TwoLayerNet(object):
 
             # Every epoch, check train and val accuracy and decay learning rate.
             if it % iterations_per_epoch == 0:
+                duration = time.time() - start_time
+                start_time = time.time()
+                epoch = it / iterations_per_epoch
+
                 # Check accuracy
                 train_acc = (self.predict(X_batch) == y_batch).mean()
                 val_acc = (self.predict(X_val) == y_val).mean()
                 train_acc_history.append(train_acc)
                 val_acc_history.append(val_acc)
 
+                # get valid loss
+                val_loss = self.loss(X_val, y_val, reg=reg)[0]
+                val_loss_history.append(val_loss)
+
+                # don't take the average in the first step
+                if epoch > 0:
+                    average_train_loss /= iterations_per_epoch
+
+                print_step_summary_and_update_best_values(epoch, average_train_loss, train_acc,
+                                                          val_loss, val_acc, duration)
+
+                # reset for the next epoch
+                average_train_loss = 0
+
+                # early stopping if no improvement of val_acc during the last 5 epochs
+                # https://link.springer.com/chapter/10.1007/978-3-642-35289-8_5
+                if val_acc > best_validation_accuracy:
+                    best_validation_accuracy = val_acc
+                    best_model = {
+                        'W1': self.params['W1'].copy(),
+                        'W2': self.params['W2'].copy(),
+                        'b1': self.params['b1'].copy(),
+                        'b2': self.params['b2'].copy(),
+                    }
+                    early_stopping_counter = 10
+
+                else:
+                    early_stopping_counter -= 1
+
+                    # if early_stopping_counter is 0 restore best weights and stop training
+                    if early_stopping_counter <= 0:
+                        print('> Early Stopping after 10 epochs of no improvements.')
+                        print('> Restoring params of best model with validation accuracy of: '
+                              , best_validation_accuracy)
+                        self.params = best_model
+                        break
+
                 # Decay learning rate
                 learning_rate *= learning_rate_decay
+        print('=====================================================================================================')
 
         return {
             'loss_history': loss_history,
             'train_acc_history': train_acc_history,
             'val_acc_history': val_acc_history,
+            'val_loss_history': val_loss_history,
         }
 
     def predict(self, X):
@@ -290,73 +369,3 @@ class TwoLayerNet(object):
         ###########################################################################
 
         return y_pred
-
-# def rel_error(x, y):
-#     """ returns relative error """
-#     return np.max(np.abs(x - y) / (np.maximum(1e-8, np.abs(x) + np.abs(y))))
-# # Create a small net and some toy data to check your implementations.
-# # Note that we set the random seed for repeatable experiments.
-#
-# input_size = 4
-# hidden_size = 10
-# num_classes = 3
-# num_inputs = 5
-#
-# def init_toy_model():
-#     np.random.seed(0)
-#     return TwoLayerNet(input_size, hidden_size, num_classes, std=1e-1)
-#
-# def init_toy_data():
-#     np.random.seed(1)
-#     X = 10 * np.random.randn(num_inputs, input_size)
-#     y = np.array([0, 1, 2, 2, 1])
-#     return X, y
-#
-# net = init_toy_model()
-# X, y = init_toy_data()
-#
-# scores = net.loss(X)
-# print('Your scores:')
-# print(scores)
-# print()
-# print('correct scores:')
-# correct_scores = np.asarray([
-#     [-0.81233741, -1.27654624, -0.70335995],
-#     [-0.17129677, -1.18803311, -0.47310444],
-#     [-0.51590475, -1.01354314, -0.8504215 ],
-#     [-0.15419291, -0.48629638, -0.52901952],
-#     [-0.00618733, -0.12435261, -0.15226949]])
-# print(correct_scores)
-# print()
-#
-# # The difference should be very small. We get < 1e-7
-# print('Difference between your scores and correct scores:')
-# print(np.sum(np.abs(scores - correct_scores)))
-#
-# loss, _ = net.loss(X, y, reg=0.1)
-# correct_loss = 1.30378789133
-#
-# # should be very small, we get < 1e-12
-# print('Difference between your loss and correct loss:')
-# print(np.sum(np.abs(loss - correct_loss)))
-#
-# from dl4cv.gradient_check import eval_numerical_gradient
-#
-# # Use numeric gradient checking to check your implementation of the backward pass.
-# # If your implementation is correct, the difference between the numeric and
-# # analytic gradients should be less than 1e-8 for each of W1, W2, b1, and b2.
-#
-# loss, grads = net.loss(X, y, reg=0.1)
-#
-# # these should all be less than 1e-8 or so
-# for param_name in grads:
-#     f = lambda W: net.loss(X, y, reg=0.1)[0]
-#     param_grad_num = eval_numerical_gradient(f, net.params[param_name], verbose=False)
-#     print('%s max relative error: %e' % (param_name, rel_error(param_grad_num, grads[param_name])))
-#
-# net = init_toy_model()
-# stats = net.train(X, y, X, y,
-#                   learning_rate=1e-1, reg=1e-5,
-#                   num_iters=100, verbose=False)
-#
-# print('Final training loss: ', stats['loss_history'][-1])
