@@ -81,7 +81,7 @@ class TwoLayerNet(object):
 
         # compute activations for layer 2 using softmax
         scores = np.dot(l1_activation, W2) + b2
-        # take care of potential numerical issues
+
 
 
         #############################################################################
@@ -103,7 +103,9 @@ class TwoLayerNet(object):
         #############################################################################
 
         # compute softmax
+        # take care of potential numerical issues
         scores -= np.max(scores, axis=1, keepdims=True)
+
         scores = np.exp(scores) / np.sum(np.exp(scores), axis=1, keepdims=True)
 
         losses = - np.log(scores[range(N), y])
@@ -203,6 +205,10 @@ class TwoLayerNet(object):
             # them in X_batch and y_batch respectively.                             #
             #########################################################################
 
+            batch_indices = np.random.choice(num_train, batch_size)
+            X_batch = X[batch_indices]
+            y_batch = y[batch_indices]
+
             #########################################################################
             #                             END OF YOUR CODE                          #
             #########################################################################
@@ -218,7 +224,10 @@ class TwoLayerNet(object):
             # stored in the grads dictionary defined above.                         #
             #########################################################################
 
-
+            self.params['W1'] -= learning_rate * grads['W1']
+            self.params['W2'] -= learning_rate * grads['W2']
+            self.params['b1'] -= learning_rate * grads['b1'][0]
+            self.params['b2'] -= learning_rate * grads['b2'][0]
 
             #########################################################################
             #                             END OF YOUR CODE                          #
@@ -264,6 +273,17 @@ class TwoLayerNet(object):
         ###########################################################################
         # TODO: Implement this function; it should be VERY simple!                #
         ###########################################################################
+
+        # compute activations for layer 1 using Relu
+        l1_input = np.dot(X, self.params['W1']) + self.params['b1']
+        l1_activation = l1_input * (l1_input > 0)
+
+        # compute activations for layer 2 using softmax
+        scores = np.dot(l1_activation, self.params['W2']) + self.params['b2']
+        # compute softmax
+        # take care of potential numerical issues
+        scores -= np.max(scores, axis=1, keepdims=True)
+        y_pred = np.argmax(np.exp(scores) / np.sum(np.exp(scores), axis=1, keepdims=True), axis=1)
 
         ###########################################################################
         #                              END OF YOUR CODE                           #
@@ -333,3 +353,10 @@ class TwoLayerNet(object):
 #     f = lambda W: net.loss(X, y, reg=0.1)[0]
 #     param_grad_num = eval_numerical_gradient(f, net.params[param_name], verbose=False)
 #     print('%s max relative error: %e' % (param_name, rel_error(param_grad_num, grads[param_name])))
+#
+# net = init_toy_model()
+# stats = net.train(X, y, X, y,
+#                   learning_rate=1e-1, reg=1e-5,
+#                   num_iters=100, verbose=False)
+#
+# print('Final training loss: ', stats['loss_history'][-1])
