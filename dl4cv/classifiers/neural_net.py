@@ -65,6 +65,7 @@ class TwoLayerNet(object):
         W1, b1 = self.params['W1'], self.params['b1']
         W2, b2 = self.params['W2'], self.params['b2']
         N, D = X.shape
+        C = b2.shape[0]
 
         # Compute the forward pass
         scores = None
@@ -73,6 +74,15 @@ class TwoLayerNet(object):
         # Store the result in the scores variable, which should be an array of      #
         # shape (N, C).                                                             #
         #############################################################################
+
+        # compute activations for layer 1 using Relu
+        l1_input = np.dot(X, W1) + b1
+        l1_activation = l1_input * (l1_input > 0)
+
+        # compute activations for layer 2 using softmax
+        scores = np.dot(l1_activation, W2) + b2
+        # take care of potential numerical issues
+
 
         #############################################################################
         #                              END OF YOUR CODE                             #
@@ -92,6 +102,19 @@ class TwoLayerNet(object):
         # regularization loss by 0.5                                                #
         #############################################################################
 
+        # compute softmax
+        scores -= np.max(scores, axis=1, keepdims=True)
+        scores = np.exp(scores) / np.sum(np.exp(scores), axis=1, keepdims=True)
+
+        losses = - np.log(scores[range(N), y])
+        loss = np.sum(losses) / N
+
+        # add regularization for loss
+        loss += 0.5 * reg * (
+            np.sum(W1 ** 2) +
+            np.sum(W2 ** 2)
+        )
+
         #############################################################################
         #                              END OF YOUR CODE                             #
         #############################################################################
@@ -103,6 +126,38 @@ class TwoLayerNet(object):
         # and biases. Store the results in the grads dictionary. For example,       #
         # grads['W1'] should store the gradient on W1, and be a matrix of same size #
         #############################################################################
+
+        # convert labels to one-hot
+        y_one_hot = np.zeros((N, C))
+        y_one_hot[np.arange(N), y] = 1
+
+        # gradients for weights of second layer (L = Loss, h_j = activations of L1, y_1 = scores, t_i = true label
+        # dL
+        # --        = h_j * t_s
+        # dW2_ij
+        # and t_s = (y_i - t_i)
+        true_scores = (scores - y_one_hot) / N
+        dW2 = np.dot(l1_activation.T, true_scores)
+
+        db2 = np.sum(true_scores, axis=0, keepdims=True)
+
+        # dW1
+        dW1 = np.dot(true_scores, W2.T)
+        # derivative of relu is
+        # dRelu(0) = 0
+        # dRelu(>0) = 1
+        dW1[l1_activation <= 0] = 0
+        db1 = np.sum(dW1, axis=0, keepdims=True)
+
+        dW1 = np.dot(X.T, dW1)
+
+        dW1 += reg * W1
+        dW2 += reg * W2
+
+        grads['W1'] = dW1
+        grads['W2'] = dW2
+        grads['b1'] = db1
+        grads['b2'] = db2
 
         #############################################################################
         #                              END OF YOUR CODE                             #
@@ -163,6 +218,8 @@ class TwoLayerNet(object):
             # stored in the grads dictionary defined above.                         #
             #########################################################################
 
+
+
             #########################################################################
             #                             END OF YOUR CODE                          #
             #########################################################################
@@ -214,4 +271,65 @@ class TwoLayerNet(object):
 
         return y_pred
 
-
+# def rel_error(x, y):
+#     """ returns relative error """
+#     return np.max(np.abs(x - y) / (np.maximum(1e-8, np.abs(x) + np.abs(y))))
+# # Create a small net and some toy data to check your implementations.
+# # Note that we set the random seed for repeatable experiments.
+#
+# input_size = 4
+# hidden_size = 10
+# num_classes = 3
+# num_inputs = 5
+#
+# def init_toy_model():
+#     np.random.seed(0)
+#     return TwoLayerNet(input_size, hidden_size, num_classes, std=1e-1)
+#
+# def init_toy_data():
+#     np.random.seed(1)
+#     X = 10 * np.random.randn(num_inputs, input_size)
+#     y = np.array([0, 1, 2, 2, 1])
+#     return X, y
+#
+# net = init_toy_model()
+# X, y = init_toy_data()
+#
+# scores = net.loss(X)
+# print('Your scores:')
+# print(scores)
+# print()
+# print('correct scores:')
+# correct_scores = np.asarray([
+#     [-0.81233741, -1.27654624, -0.70335995],
+#     [-0.17129677, -1.18803311, -0.47310444],
+#     [-0.51590475, -1.01354314, -0.8504215 ],
+#     [-0.15419291, -0.48629638, -0.52901952],
+#     [-0.00618733, -0.12435261, -0.15226949]])
+# print(correct_scores)
+# print()
+#
+# # The difference should be very small. We get < 1e-7
+# print('Difference between your scores and correct scores:')
+# print(np.sum(np.abs(scores - correct_scores)))
+#
+# loss, _ = net.loss(X, y, reg=0.1)
+# correct_loss = 1.30378789133
+#
+# # should be very small, we get < 1e-12
+# print('Difference between your loss and correct loss:')
+# print(np.sum(np.abs(loss - correct_loss)))
+#
+# from dl4cv.gradient_check import eval_numerical_gradient
+#
+# # Use numeric gradient checking to check your implementation of the backward pass.
+# # If your implementation is correct, the difference between the numeric and
+# # analytic gradients should be less than 1e-8 for each of W1, W2, b1, and b2.
+#
+# loss, grads = net.loss(X, y, reg=0.1)
+#
+# # these should all be less than 1e-8 or so
+# for param_name in grads:
+#     f = lambda W: net.loss(X, y, reg=0.1)[0]
+#     param_grad_num = eval_numerical_gradient(f, net.params[param_name], verbose=False)
+#     print('%s max relative error: %e' % (param_name, rel_error(param_grad_num, grads[param_name])))
