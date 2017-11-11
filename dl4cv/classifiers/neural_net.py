@@ -92,7 +92,7 @@ class TwoLayerNet(object):
         l1_input = np.dot(X, W1) + b1
         l1_activation = l1_input * (l1_input > 0)
 
-        if do_dropout:
+        if do_dropout and dropout_percent > 0.0:
             dropout_layer = np.random.binomial([np.ones((N, W1.shape[1]))], 1 - dropout_percent)[0] * (1.0 / (1 - dropout_percent))
             l1_activation *= dropout_layer
 
